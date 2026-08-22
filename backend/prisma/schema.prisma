@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EmailStatus {
+  SCHEDULED
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model User {
+  id        String    @id @default(uuid())
+  googleId  String    @unique
+  name      String
+  email     String    @unique
+  avatarUrl String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  senders   Sender[]
+  campaigns Campaign[]
+}
+
+model Sender {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  email       String    @unique
+  smtpHost    String
+  smtpPort    Int
+  smtpUser    String
+  smtpPass    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns   Campaign[]
+  emailJobs   EmailJob[]
+
+  @@index([userId])
+}
+
+model Campaign {
+  id             String    @id @default(uuid())
+  userId         String
+  senderId       String
+  subject        String
+  body           String
+  startTime      DateTime
+  delayMs        Int       @default(2000)
+  hourlyLimit    Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender         Sender    @relation(fields: [senderId], references: [id])
+  emailJobs      EmailJob[]
+
+  @@index([userId])
+  @@index([senderId])
+}
+
+model EmailJob {
+  id             String      @id @default(uuid())
+  campaignId     String
+  senderId       String
+  recipientEmail  String
+  subject        String
+  body           String
+  scheduledAt    DateTime
+  sentAt         DateTime?
+  failedAt       DateTime?
+  status         EmailStatus @default(SCHEDULED)
+  attempts       Int         @default(0)
+  bullmqJobId     String?
+  idempotencyKey  String      @unique
+  errorMessage    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sender         Sender      @relation(fields: [senderId], references: [id])
+
+  @@index([campaignId])
+  @@index([senderId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@index([senderId, scheduledAt])
+}
