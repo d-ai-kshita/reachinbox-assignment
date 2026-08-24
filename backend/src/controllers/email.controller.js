@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scheduleEmails = void 0;
+exports.getSentEmails = exports.getScheduledEmails = exports.scheduleEmails = void 0;
 const prisma_1 = require("../config/prisma");
 const email_queue_1 = require("../queue/email.queue");
 const scheduleEmails = async (req, res) => {
@@ -71,6 +71,10 @@ const scheduleEmails = async (req, res) => {
                 delay,
                 jobId: emailJob.id,
             });
+            console.log("BULLMQ JOB ADDED:", bullmqJob.id);
+            console.log("EMAIL JOB ID:", emailJob.id);
+            console.log("SCHEDULED AT:", scheduledAt.toISOString());
+            console.log("DELAY:", delay);
             await prisma_1.prisma.emailJob.update({
                 where: {
                     id: emailJob.id,
@@ -95,4 +99,62 @@ const scheduleEmails = async (req, res) => {
     }
 };
 exports.scheduleEmails = scheduleEmails;
+const getScheduledEmails = async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId || typeof userId !== "string") {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+        const emails = await prisma_1.prisma.emailJob.findMany({
+            where: {
+                campaign: {
+                    userId,
+                },
+                status: "SCHEDULED",
+            },
+            orderBy: {
+                scheduledAt: "asc",
+            },
+        });
+        return res.status(200).json(emails);
+    }
+    catch (error) {
+        console.error("Get scheduled emails error:", error);
+        return res.status(500).json({
+            message: "Failed to fetch scheduled emails",
+        });
+    }
+};
+exports.getScheduledEmails = getScheduledEmails;
+const getSentEmails = async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId || typeof userId !== "string") {
+            return res.status(400).json({
+                message: "userId is required",
+            });
+        }
+        const emails = await prisma_1.prisma.emailJob.findMany({
+            where: {
+                campaign: {
+                    userId,
+                },
+                status: "SENT",
+            },
+            orderBy: {
+                sentAt: "desc",
+            },
+        });
+        return res.status(200).json(emails);
+    }
+    catch (error) {
+        console.error("Get sent emails error:", error);
+        return res.status(500).json({
+            message: "Failed to fetch sent emails",
+        });
+    }
+};
+exports.getSentEmails = getSentEmails;
 //# sourceMappingURL=email.controller.js.map
