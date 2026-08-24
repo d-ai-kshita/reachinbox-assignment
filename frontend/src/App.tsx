@@ -18,7 +18,7 @@ type User = {
   avatar: string;
 };
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 // Temporary backend user ID.
 // Keep this for now because your current email API uses this ID.
